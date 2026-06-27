@@ -25,6 +25,16 @@ Bản mới đổi sang hướng ổn định hơn:
 
 > Trade-off: giao diện không còn “nằm gọn trong khung iPhone” như mockup, nhưng ổn định hơn cho demo/quay màn hình. Nếu sau này cần khung đẹp, nên làm overlay/device-frame bằng OBS/capture window thay vì ép native window vào Electron.
 
+
+## Bản sửa 2026-06-27 23:00: audio + iPhone frame overlay
+
+Bản này bổ sung 2 điểm theo feedback test thật:
+
+- **Âm thanh bật mặc định** qua Windows default output (`wasapisink`). Nếu không nghe tiếng, kiểm tra Windows Sound → Output device mặc định và Volume Mixer của app. Có thể bỏ tick âm thanh trong UI nếu chỉ cần hình mượt.
+- **Khung iPhone overlay**: app mở thêm một cửa sổ trong suốt/always-on-top có viền iPhone, notch và home bar. Đặt/resize cửa sổ mirror của UxPlay nằm dưới overlay này để quay demo trông giống màn hình điện thoại, nhưng vẫn tránh nhúng native window vào Electron nên ổn định hơn.
+
+Lưu ý: overlay không phải renderer video; nó là khung trang trí đặt lên trên cửa sổ mirror. Nếu cần bo góc video thật tuyệt đối thì nên dùng OBS crop/mask hoặc viết pipeline video riêng, không nên quay lại SetParent vì dễ kẹt render.
+
 ## Yêu cầu
 
 - iPhone và PC cùng Wi-Fi.

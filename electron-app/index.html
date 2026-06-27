@@ -593,6 +593,10 @@
         ⏹️ Dừng
       </button>
       
+      <button class="btn btn-guide" id="btnFrameOverlay">
+        📱 Mở khung iPhone overlay
+      </button>
+      
       <button class="btn btn-guide" id="btnGuide">
         📖 Hướng dẫn cách AirPlay
       </button>
@@ -650,6 +654,7 @@
     const btnStart = document.getElementById('btnStart');
     const btnStop = document.getElementById('btnStop');
     const btnGuide = document.getElementById('btnGuide');
+    const btnFrameOverlay = document.getElementById('btnFrameOverlay');
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
     const logBox = document.getElementById('logBox');
@@ -734,13 +739,14 @@
 
     btnStart.addEventListener('click', async () => {
       const name = document.getElementById('serverName').value || 'iPhone Mirror';
-      const noAudio = document.getElementById('noAudio').checked;
+      const noAudio = !document.getElementById('noAudio').checked;
+      const showFrameOverlay = document.getElementById('showFrameOverlay').checked;
       const fullscreen = document.getElementById('fullscreen').checked;
       
       btnStart.disabled = true;
       addLog('stdout', `Đang khởi động AirPlay server "${name}"...`);
       
-      await window.mirror.start({ name, noAudio, fullscreen });
+      await window.mirror.start({ name, noAudio, fullscreen, showFrameOverlay });
       
       const ip = await window.mirror.getIP();
       ipDisplay.textContent = ip;
@@ -753,6 +759,11 @@
       addLog('stdout', 'Đang dừng AirPlay server...');
       await window.mirror.stop();
       infoCard.style.display = 'none';
+    });
+
+    btnFrameOverlay.addEventListener('click', () => {
+      window.mirror.openFrameOverlay();
+      addLog('stdout', 'Đã mở khung iPhone overlay. Đặt cửa sổ mirror nằm dưới khung này để quay đẹp.');
     });
 
     btnGuide.addEventListener('click', () => {

@@ -3,6 +3,7 @@ const path = require('path');
 const { spawn, execFile } = require('child_process');
 
 let mainWindow;
+let frameWindow = null;
 let uxplayProcess = null;
 let isRunning = false;
 let lastMirrorBounds = null;
@@ -34,8 +35,53 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     stopUxplay();
+    closeFrameWindow();
     mainWindow = null;
   });
+}
+
+
+function createFrameWindow() {
+  if (frameWindow && !frameWindow.isDestroyed()) {
+    frameWindow.focus();
+    return;
+  }
+
+  frameWindow = new BrowserWindow({
+    width: 430,
+    height: 860,
+    minWidth: 320,
+    minHeight: 620,
+    title: 'iPhone Frame Overlay',
+    frame: false,
+    transparent: true,
+    resizable: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    skipTaskbar: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  frameWindow.setIgnoreMouseEvents(true, { forward: true });
+  frameWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html>
+<html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Arial,sans-serif;}
+.frame{position:absolute;inset:8px;border:14px solid #05060a;border-radius:54px;box-shadow:0 24px 80px rgba(0,0,0,.55), inset 0 0 0 2px rgba(255,255,255,.08);pointer-events:none;}
+.frame:before{content:"";position:absolute;top:10px;left:50%;transform:translateX(-50%);width:118px;height:31px;border-radius:0 0 19px 19px;background:#05060a;box-shadow:0 2px 0 rgba(255,255,255,.05);}
+.frame:after{content:"iPhone frame overlay - Alt+Tab để chọn cửa sổ mirror phía dưới";position:absolute;left:50%;bottom:-38px;transform:translateX(-50%);white-space:nowrap;color:white;background:rgba(0,0,0,.68);border:1px solid rgba(255,255,255,.16);padding:7px 11px;border-radius:999px;font-size:12px;}
+.home{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:118px;height:5px;border-radius:999px;background:rgba(255,255,255,.55);}
+</style></head><body><div class="frame"><div class="home"></div></div></body></html>`));
+
+  frameWindow.on('closed', () => { frameWindow = null; });
+}
+
+function closeFrameWindow() {
+  if (frameWindow && !frameWindow.isDestroyed()) frameWindow.close();
+  frameWindow = null;
 }
 
 function sendMirrorWindowStatus(message, extra = {}) {
@@ -57,7 +103,7 @@ function stopMirrorEmbedding() {
 }
 
 function startMirrorEmbedding() {
-  sendMirrorWindowStatus('AirPlay sẽ mở ở cửa sổ mirror riêng để tránh kẹt render.', {
+  sendMirrorWindowStatus('AirPlay mở ở cửa sổ mirror riêng. Có thể bật khung iPhone overlay để quay đẹp hơn.', {
     hint: 'Nếu cửa sổ mirror nằm sau app, bấm Alt+Tab hoặc thu nhỏ cửa sổ điều khiển.'
   });
 }
@@ -120,6 +166,8 @@ async function startUxplay(options = {}) {
   if (options.noAudio) {
     args.push('-as', '0');
   } else {
+    // WASAPI uses the Windows default output device. If there is no sound, set
+    // the desired speaker/headphone as Default Device in Windows Sound settings.
     args.push('-as', 'wasapisink');
   }
 
@@ -139,6 +187,14 @@ async function startUxplay(options = {}) {
   isRunning = true;
   embeddedMirrorHwnd = null;
   startMirrorEmbedding();
+  if (options.showFrameOverlay) createFrameWindow();
+  mainWindow.webContents.send('uxplay-log', {
+    type: 'stdout',
+    text: options.noAudio
+      ? 'Audio: đang tắt để tối ưu hình.'
+      : 'Audio: đang bật qua Windows default output (wasapisink). Nếu không nghe tiếng, kiểm tra Default Output/Mixer của Windows.',
+    timestamp: Date.now()
+  });
 
   uxplayProcess.stdout.on('data', (data) => {
     const text = data.toString().trim();
@@ -187,6 +243,7 @@ function stopUxplay() {
     isRunning = false;
   }
   stopMirrorEmbedding();
+  closeFrameWindow();
 }
 
 app.whenReady().then(() => {
@@ -228,6 +285,16 @@ ipcMain.handle('mirror-host-resized', async (event, bounds) => {
   // Kept for preload/UI compatibility. Stable mode no longer embeds or resizes
   // the native mirror window inside Electron.
   lastMirrorBounds = bounds;
+  return { ok: true };
+});
+
+ipcMain.handle('open-frame-overlay', () => {
+  createFrameWindow();
+  return { ok: true };
+});
+
+ipcMain.handle('close-frame-overlay', () => {
+  closeFrameWindow();
   return { ok: true };
 });
 
