@@ -67,12 +67,14 @@ function createMirrorFrameWindow() {
   frameWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html>
 <html><head><meta charset="utf-8"><style>
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Arial,sans-serif;}
-.shell{position:absolute;inset:8px;border:18px solid #05060a;border-radius:58px;box-shadow:0 28px 90px rgba(0,0,0,.58),inset 0 0 0 2px rgba(255,255,255,.08);background:rgba(0,0,0,.08);}
-.drag{position:absolute;left:76px;right:76px;top:8px;height:52px;-webkit-app-region:drag;z-index:4;}
-.notch{position:absolute;top:18px;left:50%;transform:translateX(-50%);width:124px;height:32px;border-radius:0 0 20px 20px;background:#05060a;z-index:5;}
-.hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);color:rgba(255,255,255,.75);font-size:11px;background:rgba(0,0,0,.45);padding:5px 9px;border-radius:999px;white-space:nowrap;z-index:6;}
-.home{position:absolute;left:50%;bottom:35px;transform:translateX(-50%);width:120px;height:5px;border-radius:999px;background:rgba(255,255,255,.62);z-index:5;}
-</style></head><body><div class="shell"><div class="drag"></div><div class="notch"></div><div class="home"></div><div class="hint">Kéo vùng trên notch để di chuyển khung</div></div></body></html>`));
+.shell{position:absolute;inset:6px;border:14px solid #030406;border-radius:56px;box-shadow:0 18px 55px rgba(0,0,0,.34),0 0 0 1px rgba(255,255,255,.10),inset 0 0 0 1px rgba(255,255,255,.08);background:transparent;pointer-events:none;}
+.drag{position:absolute;left:70px;right:70px;top:6px;height:62px;-webkit-app-region:drag;z-index:8;pointer-events:auto;}
+.corner{position:absolute;width:34px;height:34px;border:1px solid rgba(255,255,255,.16);opacity:.18;z-index:9;pointer-events:none;}
+.corner.tl{left:14px;top:14px;border-right:0;border-bottom:0;border-radius:26px 0 0 0}.corner.tr{right:14px;top:14px;border-left:0;border-bottom:0;border-radius:0 26px 0 0}.corner.bl{left:14px;bottom:14px;border-right:0;border-top:0;border-radius:0 0 0 26px}.corner.br{right:14px;bottom:14px;border-left:0;border-top:0;border-radius:0 0 26px 0}
+.notch{position:absolute;top:15px;left:50%;transform:translateX(-50%);width:118px;height:30px;border-radius:0 0 19px 19px;background:#030406;box-shadow:0 1px 0 rgba(255,255,255,.08);z-index:7;pointer-events:none;}
+.home{position:absolute;left:50%;bottom:31px;transform:translateX(-50%);width:112px;height:4px;border-radius:999px;background:rgba(255,255,255,.48);z-index:7;pointer-events:none;}
+.resize-dot{position:absolute;right:14px;bottom:14px;width:24px;height:24px;border-right:3px solid rgba(255,255,255,.30);border-bottom:3px solid rgba(255,255,255,.30);border-radius:0 0 18px 0;z-index:8;pointer-events:none;}
+</style></head><body><div class="shell"></div><div class="drag"></div><div class="notch"></div><div class="home"></div><div class="resize-dot"></div><div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div></body></html>`));
   frameWindow.on('move', () => styleMirrorWindowOnce({ mirrorSize: 'frame' }));
   frameWindow.on('resize', () => styleMirrorWindowOnce({ mirrorSize: 'frame' }));
   frameWindow.on('closed', () => { frameWindow = null; });
@@ -84,10 +86,10 @@ function getFrameVideoBounds() {
   // Match the transparent iPhone shell: video lives inside the black frame,
   // leaving room for notch/home indicator.
   return {
-    x: b.x + 34,
-    y: b.y + 72,
-    width: Math.max(220, b.width - 68),
-    height: Math.max(360, b.height - 144)
+    x: b.x + 26,
+    y: b.y + 62,
+    width: Math.max(220, b.width - 52),
+    height: Math.max(360, b.height - 124)
   };
 }
 

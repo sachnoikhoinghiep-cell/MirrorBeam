@@ -29,6 +29,16 @@ Bản mới đổi sang hướng ổn định hơn:
 
 
 
+
+## Bản sửa 2026-06-28 00:10: polish khung iPhone
+
+Tinh chỉnh frame giả lập theo feedback:
+
+- Nền ngoài viền trong suốt hơn, bỏ mảng/hint chữ gây rối.
+- Chỉ giữ viền đen bo góc, notch và home bar nhẹ.
+- Thêm dấu resize mờ ở góc dưới phải.
+- Video được đặt sát hơn vào vùng màn hình bên trong frame.
+
 ## Bản sửa 2026-06-27 23:40: khung iPhone kéo được
 
 Bản auto-style trước bỏ viền cửa sổ video nên không kéo được và vẫn không có cảm giác bo viền iPhone. Bản này đổi sang mô hình mới:
