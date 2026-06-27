@@ -21,7 +21,13 @@
       "target": "portable",
       "icon": "icon.png"
     },
-    "files": ["**/*", "!uxplay-src/**"],
+    "files": [
+      "**/*",
+      "!uxplay-src/**",
+      "!dist*/**",
+      "!*.log",
+      "!*.7z"
+    ],
     "extraResources": [
       {
         "from": "../uxplay-src/build/uxplay.exe",

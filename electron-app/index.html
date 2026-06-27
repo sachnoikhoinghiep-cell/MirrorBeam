@@ -332,6 +332,35 @@
 
     .device-frame.ipad .device-screen { border-radius: 24px; }
 
+    .mirror-host {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .device-screen.embedded .screen-content {
+      opacity: 0;
+    }
+
+    .embed-pill {
+      position: absolute;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      z-index: 4;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.82);
+      background: rgba(5,6,11,0.72);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      white-space: nowrap;
+    }
+
+    .embed-pill.ok { color: #8ef0a4; border-color: rgba(76,175,80,0.35); }
+
     .notch {
       position: absolute;
       top: 10px;
@@ -552,7 +581,7 @@
         </label>
         <label class="checkbox-item">
           <input type="checkbox" id="fullscreen">
-          <span>Toàn màn hình</span>
+          <span>Mở cửa sổ mirror toàn màn hình</span>
         </label>
       </div>
       
@@ -583,20 +612,22 @@
           <button class="mini-btn" id="btnIpadFrame">iPad</button>
         </div>
         <div class="device-frame" id="deviceFrame">
-          <div class="device-screen">
+          <div class="device-screen" id="deviceScreen">
+            <div class="mirror-host" id="mirrorHost" aria-hidden="true"></div>
             <div class="notch"></div>
             <div class="screen-content">
               <div class="phone-icon">📱</div>
-              <h3>Khung trình chiếu bo góc kiểu thiết bị thật</h3>
-              <p>Khi iPhone kết nối AirPlay, cửa sổ mirror của UxPlay sẽ mở riêng. Kéo cửa sổ mirror đặt lên vùng này khi quay bài để có bố cục đẹp hơn.</p>
+              <h3>Màn hình iPhone sẽ mở ở cửa sổ riêng</h3>
+              <p>Bấm khởi động AirPlay rồi chọn “iPhone Mirror” trên iPhone. Để tránh kẹt render, màn hình iPhone sẽ mở trong cửa sổ UxPlay riêng; cửa sổ này là phần anh quay/demo.</p>
             </div>
+            <div class="embed-pill" id="embedStatus">Cửa sổ mirror riêng sẽ hiện khi iPhone kết nối...</div>
           </div>
         </div>
       </div>
 
       <div class="side-stack">
         <div class="presentation-note">
-          <strong>Mẹo quay đẹp:</strong> chọn iPhone/iPad ở trên, bật AirPlay, rồi kéo cửa sổ mirror đặt lên giữa khung. Bản nâng cấp sâu tiếp theo sẽ embed video live vào khung này để tự bo góc hoàn toàn.
+          <strong>Mẹo quay đẹp:</strong> bật AirPlay trong app, sau đó trên iPhone chọn “iPhone Mirror”. Khi iPhone kết nối, Windows sẽ mở một cửa sổ mirror riêng. Không đặt iPhone quay lại chính màn PC đang mirror để tránh vòng lặp hình gây lag/đơ.
         </div>
         <div class="log-container">
           <h2>📋 Nhật ký</h2>
@@ -625,6 +656,9 @@
     const infoCard = document.getElementById('infoCard');
     const ipDisplay = document.getElementById('ipDisplay');
     const waitingOverlay = document.getElementById('waitingOverlay');
+    const deviceScreen = document.getElementById('deviceScreen');
+    const mirrorHost = document.getElementById('mirrorHost');
+    const embedStatus = document.getElementById('embedStatus');
 
     let isRunning = false;
 
@@ -632,15 +666,32 @@
     const btnPhoneFrame = document.getElementById('btnPhoneFrame');
     const btnIpadFrame = document.getElementById('btnIpadFrame');
 
+    function notifyMirrorHostBounds() {
+      if (!window.mirror?.mirrorHostResized || !mirrorHost) return;
+      const r = mirrorHost.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      window.mirror.mirrorHostResized({
+        x: Math.round(r.left * dpr),
+        y: Math.round(r.top * dpr),
+        width: Math.max(80, Math.round(r.width * dpr)),
+        height: Math.max(80, Math.round(r.height * dpr))
+      }).catch(() => {});
+    }
+
     function setDeviceFrame(kind) {
       const ipad = kind === 'ipad';
       deviceFrame.classList.toggle('ipad', ipad);
       btnPhoneFrame.classList.toggle('active', !ipad);
       btnIpadFrame.classList.toggle('active', ipad);
+      requestAnimationFrame(notifyMirrorHostBounds);
     }
 
     btnPhoneFrame.addEventListener('click', () => setDeviceFrame('iphone'));
     btnIpadFrame.addEventListener('click', () => setDeviceFrame('ipad'));
+    window.addEventListener('resize', () => requestAnimationFrame(notifyMirrorHostBounds));
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(() => notifyMirrorHostBounds()).observe(mirrorHost);
+    }
 
     function updateStatus(running, message) {
       isRunning = running;
@@ -648,7 +699,16 @@
       statusText.textContent = message || (running ? 'Đang chạy' : 'Đã dừng');
       btnStart.style.display = running ? 'none' : 'flex';
       btnStop.style.display = running ? 'flex' : 'none';
-      waitingOverlay.classList.toggle('show', running);
+      // Do not cover the in-app device preview with a full-screen waiting layer.
+      // The device frame itself now owns the waiting/embedded status via #embedStatus.
+      waitingOverlay.classList.remove('show');
+      if (!running) {
+        deviceScreen.classList.remove('embedded');
+        embedStatus.classList.remove('ok');
+        embedStatus.textContent = 'Đang chờ AirPlay...';
+      } else {
+        requestAnimationFrame(notifyMirrorHostBounds);
+      }
     }
 
     function addLog(type, text) {
@@ -712,8 +772,15 @@
       addLog(data.type, data.text);
     });
 
+    window.mirror.onEmbedStatus((data) => {
+      embedStatus.textContent = data.message || 'Cửa sổ mirror riêng sẽ hiện khi iPhone kết nối...';
+      embedStatus.classList.toggle('ok', !!data.externalWindow);
+      deviceScreen.classList.toggle('embedded', false);
+    });
+
     // Init
     updateStatus(false, 'Chưa khởi động');
+    requestAnimationFrame(notifyMirrorHostBounds);
   </script>
 </body>
 </html>

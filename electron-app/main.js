@@ -1,18 +1,18 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const { spawn, execFile } = require('child_process');
-const net = require('net');
 
 let mainWindow;
 let uxplayProcess = null;
 let isRunning = false;
+let lastMirrorBounds = null;
+let embeddedMirrorHwnd = null;
 
-const UXPLAY_PATH = app.isPackaged 
+const UXPLAY_PATH = app.isPackaged
   ? path.join(process.resourcesPath, 'uxplay.exe')
   : path.join(__dirname, '..', 'uxplay-src', 'build', 'uxplay.exe');
 
 const MSYS2_UCRT64_BIN = 'C:\\tools\\msys64\\ucrt64\\bin';
-
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -30,13 +30,41 @@ function createWindow() {
   });
 
   mainWindow.loadFile('index.html');
-  
-  // Remove menu bar
   mainWindow.setMenuBarVisibility(false);
 
   mainWindow.on('closed', () => {
     stopUxplay();
     mainWindow = null;
+  });
+}
+
+function sendMirrorWindowStatus(message, extra = {}) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send('mirror-embed-status', {
+    message,
+    embedded: false,
+    externalWindow: true,
+    ...extra
+  });
+}
+
+function stopMirrorEmbedding() {
+  // Legacy no-op: v1 tried to re-parent the native GStreamer window into Electron.
+  // On Windows this often freezes rendering. The stable mode keeps UxPlay's
+  // native mirror window as its own top-level window and lets Electron act as
+  // a controller/log panel only.
+  embeddedMirrorHwnd = null;
+}
+
+function startMirrorEmbedding() {
+  sendMirrorWindowStatus('AirPlay sẽ mở ở cửa sổ mirror riêng để tránh kẹt render.', {
+    hint: 'Nếu cửa sổ mirror nằm sau app, bấm Alt+Tab hoặc thu nhỏ cửa sổ điều khiển.'
+  });
+}
+
+function killStaleUxplayProcesses() {
+  return new Promise((resolve) => {
+    execFile('taskkill.exe', ['/IM', 'uxplay.exe', '/F', '/T'], { windowsHide: true, timeout: 5000 }, () => resolve());
   });
 }
 
@@ -58,7 +86,6 @@ function getPrimaryNetwork() {
     }
   }
 
-  // Prefer the real LAN adapter over Hyper-V / host-only adapters.
   const preferred = candidates.find(c => !c.virtual && c.address.startsWith('192.168.'))
     || candidates.find(c => !c.virtual)
     || candidates[0];
@@ -70,59 +97,57 @@ function getLocalIP() {
   return getPrimaryNetwork().address;
 }
 
-function startUxplay(options = {}) {
+async function startUxplay(options = {}) {
   if (isRunning) {
     mainWindow.webContents.send('uxplay-status', { running: true, message: 'Already running' });
     return;
   }
 
+  await killStaleUxplayProcesses();
+
   const network = getPrimaryNetwork();
   const localIP = network.address;
   const serverName = options.name || 'iPhone Mirror';
-  
-  // Build uxplay arguments
+
   const args = [];
   if (options.name) args.push('-n', options.name);
-  // Avoid '@hostname' suffix so the iPhone list is clean and stable.
   args.push('-nh');
-  // Force the real LAN adapter MAC. Without this, UxPlay can pick Hyper-V/vEthernet
-  // (00:15:5d:...) and advertise on the wrong interface.
   if (network.mac && network.mac !== '00:00:00:00:00:00') args.push('-m', network.mac);
-  if (options.fullscreen) args.push('-fs');
-  // Windows-friendly sinks.
+  // Stable mode: keep the GStreamer/UxPlay renderer as a normal native window.
+  // Re-parenting this window into Electron caused frozen/black renders on Windows.
   args.push('-vs', 'd3d11videosink');
+  if (options.fullscreen) args.push('-fs');
   if (options.noAudio) {
     args.push('-as', '0');
   } else {
     args.push('-as', 'wasapisink');
   }
-  
-  // Set environment to include MSYS2 UCRT64 bin (for GStreamer DLLs)
+
   const env = { ...process.env };
   env.PATH = MSYS2_UCRT64_BIN + ';' + (env.PATH || '');
-  // GStreamer plugins live under ucrt64\lib\gstreamer-1.0, not ucrt64\bin.
-  // If this points to the wrong folder, UxPlay starts then exits with "Required gstreamer plugin 'libav' not found".
   env.GST_PLUGIN_PATH = 'C:\\tools\\msys64\\ucrt64\\lib\\gstreamer-1.0';
 
   console.log('Network selected:', network);
   console.log('Starting uxplay:', UXPLAY_PATH, args.join(' '));
-  
+
   uxplayProcess = spawn(UXPLAY_PATH, args, {
-    env: env,
+    env,
     cwd: path.dirname(UXPLAY_PATH),
     windowsHide: false
   });
 
   isRunning = true;
+  embeddedMirrorHwnd = null;
+  startMirrorEmbedding();
 
   uxplayProcess.stdout.on('data', (data) => {
     const text = data.toString().trim();
     console.log('uxplay:', text);
     mainWindow.webContents.send('uxplay-log', { type: 'stdout', text, timestamp: Date.now() });
-    
+
     if (text.includes('Listening') || text.includes('started')) {
-      mainWindow.webContents.send('uxplay-status', { 
-        running: true, 
+      mainWindow.webContents.send('uxplay-status', {
+        running: true,
         ip: localIP,
         message: `AirPlay ready at ${localIP} (${network.name})`
       });
@@ -138,15 +163,16 @@ function startUxplay(options = {}) {
   uxplayProcess.on('close', (code) => {
     console.log('uxplay exited with code', code);
     isRunning = false;
+    stopMirrorEmbedding();
     uxplayProcess = null;
     mainWindow.webContents.send('uxplay-status', { running: false, message: 'Stopped' });
   });
 
-  mainWindow.webContents.send('uxplay-status', { 
-    running: true, 
+  mainWindow.webContents.send('uxplay-status', {
+    running: true,
     ip: localIP,
     name: serverName,
-    message: `Starting AirPlay server "${serverName}" at ${localIP} (${network.name})...`
+    message: `Starting AirPlay server (mirror opens in its own window) "${serverName}" at ${localIP} (${network.name})...`
   });
 }
 
@@ -160,11 +186,12 @@ function stopUxplay() {
     }, 3000);
     isRunning = false;
   }
+  stopMirrorEmbedding();
 }
 
 app.whenReady().then(() => {
   createWindow();
-  
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -183,9 +210,8 @@ app.on('before-quit', () => {
   stopUxplay();
 });
 
-// IPC handlers
-ipcMain.handle('start-uxplay', (event, options) => {
-  startUxplay(options);
+ipcMain.handle('start-uxplay', async (event, options) => {
+  await startUxplay(options);
   return { ok: true };
 });
 
@@ -196,6 +222,13 @@ ipcMain.handle('stop-uxplay', () => {
 
 ipcMain.handle('get-ip', () => {
   return getLocalIP();
+});
+
+ipcMain.handle('mirror-host-resized', async (event, bounds) => {
+  // Kept for preload/UI compatibility. Stable mode no longer embeds or resizes
+  // the native mirror window inside Electron.
+  lastMirrorBounds = bounds;
+  return { ok: true };
 });
 
 ipcMain.handle('open-airplay-guide', () => {
