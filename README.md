@@ -30,6 +30,17 @@ Bản mới đổi sang hướng ổn định hơn:
 
 
 
+
+## Bản sửa 2026-06-28 00:15: giảm chớp nháy Direct3D
+
+Nguyên nhân chớp nháy là app liên tục gọi `SetWindowPos` để kéo cửa sổ `Direct3D11 renderer` đi theo frame realtime. Bản này đổi sang cơ chế ổn định hơn:
+
+- Không sync video theo frame liên tục khi kéo/resize nữa.
+- Khi start, app chỉ thử đặt video vào frame một số lần ban đầu.
+- Sau khi kéo/resize frame, bấm **Mở/đặt lại khung iPhone kéo được** để sync video lại một lần.
+
+Đổi lại: bớt chớp nháy hơn, nhưng video không tự chạy theo frame realtime.
+
 ## Bản sửa 2026-06-28 00:10: polish khung iPhone
 
 Tinh chỉnh frame giả lập theo feedback:

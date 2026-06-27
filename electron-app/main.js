@@ -75,8 +75,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .home{position:absolute;left:50%;bottom:31px;transform:translateX(-50%);width:112px;height:4px;border-radius:999px;background:rgba(255,255,255,.48);z-index:7;pointer-events:none;}
 .resize-dot{position:absolute;right:14px;bottom:14px;width:24px;height:24px;border-right:3px solid rgba(255,255,255,.30);border-bottom:3px solid rgba(255,255,255,.30);border-radius:0 0 18px 0;z-index:8;pointer-events:none;}
 </style></head><body><div class="shell"></div><div class="drag"></div><div class="notch"></div><div class="home"></div><div class="resize-dot"></div><div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div></body></html>`));
-  frameWindow.on('move', () => styleMirrorWindowOnce({ mirrorSize: 'frame' }));
-  frameWindow.on('resize', () => styleMirrorWindowOnce({ mirrorSize: 'frame' }));
+  // Do not continuously sync the Direct3D window while dragging/resizing.
+  // Repeated SetWindowPos calls make d3d11videosink flicker. The user can press
+  // the reset/sync button after moving the frame.
   frameWindow.on('closed', () => { frameWindow = null; });
 }
 
@@ -161,7 +162,6 @@ function styleMirrorWindowOnce(options = {}) {
         const firstStyle = styledMirrorHwnd !== result.childHwnd;
         styledMirrorHwnd = result.childHwnd;
         sendMirrorWindowStatus('Đã tự đặt cửa sổ mirror thành kiểu màn hình iPhone', { styled: true, ...result });
-        if (frameWindow && !frameWindow.isDestroyed()) frameWindow.moveTop();
         if (firstStyle && mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('uxplay-log', { type: 'stdout', text: `Đã đặt cửa sổ mirror vào khung iPhone kéo được: ${result.title || 'unknown'} / ${result.class || 'unknown'} (${result.width}x${result.height}).`, timestamp: Date.now() });
         }
@@ -174,9 +174,19 @@ function styleMirrorWindowOnce(options = {}) {
 
 function startMirrorStyling(options = {}) {
   stopMirrorStyling();
-  sendMirrorWindowStatus('Khi iPhone kết nối, app sẽ tự biến cửa sổ mirror thành kiểu màn hình iPhone.', { styled: false });
-  mirrorStyleTimer = setInterval(() => styleMirrorWindowOnce(options), 1200);
-  styleMirrorWindowOnce(options);
+  sendMirrorWindowStatus('Khi iPhone kết nối, app sẽ thử đặt video vào khung iPhone. Nếu lệch, bấm nút đặt lại.', { styled: false });
+  let attempts = 0;
+  const maxAttempts = 8;
+  const run = () => {
+    attempts += 1;
+    styleMirrorWindowOnce(options);
+    if (attempts >= maxAttempts && mirrorStyleTimer) {
+      clearInterval(mirrorStyleTimer);
+      mirrorStyleTimer = null;
+    }
+  };
+  mirrorStyleTimer = setInterval(run, 1500);
+  setTimeout(run, 500);
 }
 
 function killStaleUxplayProcesses() {
