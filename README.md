@@ -27,6 +27,17 @@ Bản mới đổi sang hướng ổn định hơn:
 
 
 
+
+## Bản sửa 2026-06-27 23:30: bắt đúng Direct3D11 renderer
+
+Ảnh test thực tế cho thấy cửa sổ video thật có title **Direct3D11 renderer** và class **GSTD3D11**. Bản trước chỉ tìm theo PID UxPlay nên có thể không bắt đúng cửa sổ này. Bản này sửa `window-styler.ps1` để:
+
+- Ưu tiên tìm theo PID như cũ.
+- Nếu không trúng, fallback enum toàn bộ cửa sổ visible và ưu tiên `Direct3D11 renderer` / `GSTD3D11` / GStreamer.
+- Log rõ title/class/hwnd khi style thành công.
+
+Nếu cửa sổ video đã mở mà chưa thành kiểu iPhone, bấm **Đặt lại cửa sổ mirror kiểu iPhone**.
+
 ## Bản sửa 2026-06-27 23:15: auto-style mirror window
 
 Bản overlay rời không đúng kỳ vọng vì cửa sổ mirror thật vẫn do GStreamer mở riêng ở giữa màn hình. Bản này đổi sang cách thực dụng hơn:

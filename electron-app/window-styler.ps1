@@ -6,7 +6,8 @@ param(
   [int]$Height = 860,
   [switch]$TopMost,
   [switch]$Borderless,
-  [UInt64]$ChildHwnd = 0
+  [UInt64]$ChildHwnd = 0,
+  [switch]$GlobalFallback
 )
 
 $ErrorActionPreference = 'Stop'
@@ -36,32 +37,60 @@ function Ptr([UInt64]$value) { return [IntPtr]::new([Int64]$value) }
 function Get-Title([IntPtr]$hwnd) { $sb = [Text.StringBuilder]::new(512); [void][Win32StyleOnly]::GetWindowText($hwnd, $sb, $sb.Capacity); $sb.ToString() }
 function Get-Class([IntPtr]$hwnd) { $sb = [Text.StringBuilder]::new(256); [void][Win32StyleOnly]::GetClassName($hwnd, $sb, $sb.Capacity); $sb.ToString() }
 
-$child = [IntPtr]::Zero
-if ($ChildHwnd -ne 0) {
-  $child = Ptr $ChildHwnd
-} else {
+function Find-WindowsByPredicate([scriptblock]$predicate) {
   $matches = New-Object System.Collections.Generic.List[object]
   $callback = [Win32StyleOnly+EnumWindowsProc]{
     param([IntPtr]$hwnd, [IntPtr]$lparam)
     if (-not [Win32StyleOnly]::IsWindowVisible($hwnd)) { return $true }
+    if ([Win32StyleOnly]::GetParent($hwnd) -ne [IntPtr]::Zero) { return $true }
     [uint32]$windowProcessId = 0
     [void][Win32StyleOnly]::GetWindowThreadProcessId($hwnd, [ref]$windowProcessId)
-    if ($windowProcessId -ne [uint32]$ProcessId) { return $true }
-    if ([Win32StyleOnly]::GetParent($hwnd) -ne [IntPtr]::Zero) { return $true }
     $class = Get-Class $hwnd
     $title = Get-Title $hwnd
     if ($class -match 'ConsoleWindowClass') { return $true }
-    $matches.Add([pscustomobject]@{ Hwnd = $hwnd; Title = $title; Class = $class }) | Out-Null
+    $obj = [pscustomobject]@{ Hwnd = $hwnd; Title = $title; Class = $class; ProcessId = [int]$windowProcessId }
+    if (& $predicate $obj) { $matches.Add($obj) | Out-Null }
     return $true
   }
   [void][Win32StyleOnly]::EnumWindows($callback, [IntPtr]::Zero)
-  if ($matches.Count -eq 0) {
-    @{ ok = $false; message = 'Waiting for UxPlay/GStreamer mirror window'; processId = $ProcessId } | ConvertTo-Json -Compress
+  return $matches
+}
+
+function Score-Window($w) {
+  $score = 0
+  if ($w.Title -match 'Direct3D11 renderer') { $score += 1000 }
+  if ($w.Title -match 'GStreamer|renderer|AirPlay|iPhone|Mirror|UxPlay') { $score += 300 }
+  if ($w.Class -match 'Direct3D|GStreamer|SDL|Qt|GLib|gdk|gtk|WindowsForms') { $score += 200 }
+  if ($w.Title -match 'iPhone Mirror - AirPlay Receiver|iPhone Mirror$') { $score -= 700 }
+  if ($w.Class -match 'Chrome_WidgetWin|CabinetWClass|Progman|Shell_TrayWnd') { $score -= 500 }
+  return $score
+}
+
+$child = [IntPtr]::Zero
+$chosen = $null
+if ($ChildHwnd -ne 0) {
+  $child = Ptr $ChildHwnd
+  $chosen = [pscustomobject]@{ Hwnd = $child; Title = Get-Title $child; Class = Get-Class $child; ProcessId = $ProcessId }
+} else {
+  $pidMatches = Find-WindowsByPredicate { param($w) $w.ProcessId -eq $ProcessId }
+  $ranked = @($pidMatches | Sort-Object @{ Expression = { Score-Window $_ }; Descending = $true })
+  if ($ranked.Count -gt 0 -and (Score-Window $ranked[0]) -gt -100) { $chosen = $ranked[0] }
+
+  if (-not $chosen -or (Score-Window $chosen) -lt 200) {
+    $globalMatches = Find-WindowsByPredicate {
+      param($w)
+      ($w.Title -match 'Direct3D11 renderer|GStreamer|AirPlay|UxPlay' -or $w.Class -match 'Direct3D|GStreamer|SDL|Qt|GLib|gdk|gtk') -and
+      ($w.Title -notmatch 'iPhone Mirror - AirPlay Receiver')
+    }
+    $globalRanked = @($globalMatches | Sort-Object @{ Expression = { Score-Window $_ }; Descending = $true })
+    if ($globalRanked.Count -gt 0 -and (Score-Window $globalRanked[0]) -gt 0) { $chosen = $globalRanked[0] }
+  }
+
+  if (-not $chosen) {
+    @{ ok = $false; message = 'Waiting for UxPlay/GStreamer/Direct3D11 mirror window'; processId = $ProcessId } | ConvertTo-Json -Compress
     exit 2
   }
-  $pick = $matches | Where-Object { $_.Title -match 'iPhone|Mirror|AirPlay|UxPlay' -or $_.Class -match 'GStreamer|Direct3D|SDL|Qt|GLib|gdk|gtk|WindowsForms' } | Select-Object -First 1
-  if (-not $pick) { $pick = $matches | Select-Object -First 1 }
-  $child = $pick.Hwnd
+  $child = $chosen.Hwnd
 }
 
 $screenW = [Win32StyleOnly]::GetSystemMetrics(0)
@@ -87,10 +116,10 @@ $HWND_TOPMOST = [IntPtr]::new(-1)
 $HWND_NOTOPMOST = [IntPtr]::new(-2)
 
 if ($Borderless) {
-  $style = [UInt64]([Win32StyleOnly]::GetWindowLongPtr($child, $GWL_STYLE).ToInt64())
-  $style = ($style -bor $WS_VISIBLE -bor $WS_POPUP)
-  $style = ($style -band (-bnot ($WS_CAPTION -bor $WS_THICKFRAME -bor $WS_MINIMIZEBOX -bor $WS_MAXIMIZEBOX -bor $WS_SYSMENU)))
-  [void][Win32StyleOnly]::SetWindowLongPtr($child, $GWL_STYLE, [IntPtr]::new([Int64]$style))
+  [Int64]$style = [Win32StyleOnly]::GetWindowLongPtr($child, $GWL_STYLE).ToInt64()
+  [Int64]$removeMask = [Int64]($WS_CAPTION -bor $WS_THICKFRAME -bor $WS_MINIMIZEBOX -bor $WS_MAXIMIZEBOX -bor $WS_SYSMENU)
+  $style = (($style -bor [Int64]$WS_VISIBLE -bor [Int64]$WS_POPUP) -band (-bnot $removeMask))
+  [void][Win32StyleOnly]::SetWindowLongPtr($child, $GWL_STYLE, [IntPtr]::new($style))
 }
 
 [void][Win32StyleOnly]::ShowWindow($child, $SW_SHOW)
@@ -99,4 +128,4 @@ $flags = $SWP_FRAMECHANGED -bor $SWP_SHOWWINDOW
 if (-not $TopMost) { $flags = $flags -bor $SWP_NOZORDER }
 [void][Win32StyleOnly]::SetWindowPos($child, $z, $X, $Y, $Width, $Height, $flags)
 
-@{ ok = $true; childHwnd = $child.ToInt64().ToString(); x = $X; y = $Y; width = $Width; height = $Height; borderless = [bool]$Borderless; topMost = [bool]$TopMost } | ConvertTo-Json -Compress
+@{ ok = $true; childHwnd = $child.ToInt64().ToString(); title = (Get-Title $child); class = (Get-Class $child); processId = $chosen.ProcessId; x = $X; y = $Y; width = $Width; height = $Height; borderless = [bool]$Borderless; topMost = [bool]$TopMost } | ConvertTo-Json -Compress

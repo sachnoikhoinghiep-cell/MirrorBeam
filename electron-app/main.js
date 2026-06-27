@@ -102,7 +102,7 @@ function styleMirrorWindowOnce(options = {}) {
         styledMirrorHwnd = result.childHwnd;
         sendMirrorWindowStatus('Đã tự đặt cửa sổ mirror thành kiểu màn hình iPhone', { styled: true, ...result });
         if (firstStyle && mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('uxplay-log', { type: 'stdout', text: `Đã đặt cửa sổ mirror kiểu iPhone (${result.width}x${result.height}).`, timestamp: Date.now() });
+          mainWindow.webContents.send('uxplay-log', { type: 'stdout', text: `Đã đặt cửa sổ mirror kiểu iPhone: ${result.title || 'unknown'} / ${result.class || 'unknown'} (${result.width}x${result.height}).`, timestamp: Date.now() });
         }
       }
     } catch (_) {
