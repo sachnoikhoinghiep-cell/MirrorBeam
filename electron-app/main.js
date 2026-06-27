@@ -3,17 +3,19 @@ const path = require('path');
 const { spawn, execFile } = require('child_process');
 
 let mainWindow;
-let frameWindow = null;
 let uxplayProcess = null;
 let isRunning = false;
-let lastMirrorBounds = null;
-let embeddedMirrorHwnd = null;
+let mirrorStyleTimer = null;
+let styledMirrorHwnd = null;
 
 const UXPLAY_PATH = app.isPackaged
   ? path.join(process.resourcesPath, 'uxplay.exe')
   : path.join(__dirname, '..', 'uxplay-src', 'build', 'uxplay.exe');
 
 const MSYS2_UCRT64_BIN = 'C:\\tools\\msys64\\ucrt64\\bin';
+const WINDOW_STYLER = app.isPackaged
+  ? path.join(process.resourcesPath, 'window-styler.ps1')
+  : path.join(__dirname, 'window-styler.ps1');
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -35,77 +37,85 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     stopUxplay();
-    closeFrameWindow();
     mainWindow = null;
   });
 }
 
 
-function createFrameWindow() {
-  if (frameWindow && !frameWindow.isDestroyed()) {
-    frameWindow.focus();
-    return;
-  }
-
-  frameWindow = new BrowserWindow({
-    width: 430,
-    height: 860,
-    minWidth: 320,
-    minHeight: 620,
-    title: 'iPhone Frame Overlay',
-    frame: false,
-    transparent: true,
-    resizable: true,
-    alwaysOnTop: true,
-    hasShadow: false,
-    skipTaskbar: false,
-    backgroundColor: '#00000000',
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
-
-  frameWindow.setIgnoreMouseEvents(true, { forward: true });
-  frameWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html>
-<html><head><meta charset="utf-8"><style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Arial,sans-serif;}
-.frame{position:absolute;inset:8px;border:14px solid #05060a;border-radius:54px;box-shadow:0 24px 80px rgba(0,0,0,.55), inset 0 0 0 2px rgba(255,255,255,.08);pointer-events:none;}
-.frame:before{content:"";position:absolute;top:10px;left:50%;transform:translateX(-50%);width:118px;height:31px;border-radius:0 0 19px 19px;background:#05060a;box-shadow:0 2px 0 rgba(255,255,255,.05);}
-.frame:after{content:"iPhone frame overlay - Alt+Tab để chọn cửa sổ mirror phía dưới";position:absolute;left:50%;bottom:-38px;transform:translateX(-50%);white-space:nowrap;color:white;background:rgba(0,0,0,.68);border:1px solid rgba(255,255,255,.16);padding:7px 11px;border-radius:999px;font-size:12px;}
-.home{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:118px;height:5px;border-radius:999px;background:rgba(255,255,255,.55);}
-</style></head><body><div class="frame"><div class="home"></div></div></body></html>`));
-
-  frameWindow.on('closed', () => { frameWindow = null; });
-}
-
-function closeFrameWindow() {
-  if (frameWindow && !frameWindow.isDestroyed()) frameWindow.close();
-  frameWindow = null;
-}
-
 function sendMirrorWindowStatus(message, extra = {}) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.webContents.send('mirror-embed-status', {
     message,
-    embedded: false,
-    externalWindow: true,
+    styled: !!extra.styled,
+    childHwnd: styledMirrorHwnd,
     ...extra
   });
 }
 
-function stopMirrorEmbedding() {
-  // Legacy no-op: v1 tried to re-parent the native GStreamer window into Electron.
-  // On Windows this often freezes rendering. The stable mode keeps UxPlay's
-  // native mirror window as its own top-level window and lets Electron act as
-  // a controller/log panel only.
-  embeddedMirrorHwnd = null;
+function stopMirrorStyling() {
+  if (mirrorStyleTimer) {
+    clearInterval(mirrorStyleTimer);
+    mirrorStyleTimer = null;
+  }
+  styledMirrorHwnd = null;
 }
 
-function startMirrorEmbedding() {
-  sendMirrorWindowStatus('AirPlay mở ở cửa sổ mirror riêng. Có thể bật khung iPhone overlay để quay đẹp hơn.', {
-    hint: 'Nếu cửa sổ mirror nằm sau app, bấm Alt+Tab hoặc thu nhỏ cửa sổ điều khiển.'
+function computeMirrorPlacement(options = {}) {
+  const size = options.mirrorSize || 'iphone';
+  const presets = {
+    iphone: { width: 430, height: 860 },
+    small: { width: 390, height: 780 },
+    ipad: { width: 760, height: 1024 }
+  };
+  const picked = presets[size] || presets.iphone;
+  return { ...picked, x: -1, y: -1 };
+}
+
+function styleMirrorWindowOnce(options = {}) {
+  if (!uxplayProcess) return;
+  const placement = computeMirrorPlacement(options);
+  const args = [
+    '-NoProfile',
+    '-ExecutionPolicy', 'Bypass',
+    '-File', WINDOW_STYLER,
+    '-ProcessId', String(uxplayProcess.pid),
+    '-X', String(placement.x),
+    '-Y', String(placement.y),
+    '-Width', String(placement.width),
+    '-Height', String(placement.height),
+    '-TopMost',
+    '-Borderless'
+  ];
+  if (styledMirrorHwnd) args.push('-ChildHwnd', String(styledMirrorHwnd));
+
+  execFile('powershell.exe', args, { windowsHide: true, timeout: 8000 }, (err, stdout, stderr) => {
+    const out = (stdout || '').trim();
+    if (err) {
+      sendMirrorWindowStatus('Đang chờ cửa sổ mirror của iPhone để tự đặt kiểu màn hình...', { styled: false });
+      return;
+    }
+    if (!out) return;
+    try {
+      const result = JSON.parse(out);
+      if (result.ok && result.childHwnd) {
+        const firstStyle = styledMirrorHwnd !== result.childHwnd;
+        styledMirrorHwnd = result.childHwnd;
+        sendMirrorWindowStatus('Đã tự đặt cửa sổ mirror thành kiểu màn hình iPhone', { styled: true, ...result });
+        if (firstStyle && mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('uxplay-log', { type: 'stdout', text: `Đã đặt cửa sổ mirror kiểu iPhone (${result.width}x${result.height}).`, timestamp: Date.now() });
+        }
+      }
+    } catch (_) {
+      // Ignore non-json helper output.
+    }
   });
+}
+
+function startMirrorStyling(options = {}) {
+  stopMirrorStyling();
+  sendMirrorWindowStatus('Khi iPhone kết nối, app sẽ tự biến cửa sổ mirror thành kiểu màn hình iPhone.', { styled: false });
+  mirrorStyleTimer = setInterval(() => styleMirrorWindowOnce(options), 1200);
+  styleMirrorWindowOnce(options);
 }
 
 function killStaleUxplayProcesses() {
@@ -185,9 +195,8 @@ async function startUxplay(options = {}) {
   });
 
   isRunning = true;
-  embeddedMirrorHwnd = null;
-  startMirrorEmbedding();
-  if (options.showFrameOverlay) createFrameWindow();
+  styledMirrorHwnd = null;
+  startMirrorStyling(options);
   mainWindow.webContents.send('uxplay-log', {
     type: 'stdout',
     text: options.noAudio
@@ -219,7 +228,7 @@ async function startUxplay(options = {}) {
   uxplayProcess.on('close', (code) => {
     console.log('uxplay exited with code', code);
     isRunning = false;
-    stopMirrorEmbedding();
+    stopMirrorStyling();
     uxplayProcess = null;
     mainWindow.webContents.send('uxplay-status', { running: false, message: 'Stopped' });
   });
@@ -242,9 +251,8 @@ function stopUxplay() {
     }, 3000);
     isRunning = false;
   }
-  stopMirrorEmbedding();
-  closeFrameWindow();
-}
+  stopMirrorStyling();
+  }
 
 app.whenReady().then(() => {
   createWindow();
@@ -281,10 +289,8 @@ ipcMain.handle('get-ip', () => {
   return getLocalIP();
 });
 
-ipcMain.handle('mirror-host-resized', async (event, bounds) => {
-  // Kept for preload/UI compatibility. Stable mode no longer embeds or resizes
-  // the native mirror window inside Electron.
-  lastMirrorBounds = bounds;
+ipcMain.handle('mirror-host-resized', async () => {
+  // Kept for preload/UI compatibility.
   return { ok: true };
 });
 
@@ -294,8 +300,7 @@ ipcMain.handle('open-frame-overlay', () => {
 });
 
 ipcMain.handle('close-frame-overlay', () => {
-  closeFrameWindow();
-  return { ok: true };
+    return { ok: true };
 });
 
 ipcMain.handle('open-airplay-guide', () => {

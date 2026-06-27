@@ -32,6 +32,10 @@
       {
         "from": "../uxplay-src/build/uxplay.exe",
         "to": "uxplay.exe"
+      },
+      {
+        "from": "window-styler.ps1",
+        "to": "window-styler.ps1"
       }
     ],
     "portable": {

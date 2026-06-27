@@ -26,6 +26,18 @@ Bản mới đổi sang hướng ổn định hơn:
 > Trade-off: giao diện không còn “nằm gọn trong khung iPhone” như mockup, nhưng ổn định hơn cho demo/quay màn hình. Nếu sau này cần khung đẹp, nên làm overlay/device-frame bằng OBS/capture window thay vì ép native window vào Electron.
 
 
+
+## Bản sửa 2026-06-27 23:15: auto-style mirror window
+
+Bản overlay rời không đúng kỳ vọng vì cửa sổ mirror thật vẫn do GStreamer mở riêng ở giữa màn hình. Bản này đổi sang cách thực dụng hơn:
+
+- Không dùng `SetParent`, không nhúng native window vào Electron.
+- Khi iPhone kết nối và UxPlay/GStreamer tạo cửa sổ mirror, app tự tìm cửa sổ đó theo PID.
+- App tự bỏ viền, đặt topmost và resize/center thành portrait `430x860` như màn hình iPhone.
+- Có nút **Đặt lại cửa sổ mirror kiểu iPhone** nếu Windows/GStreamer mở lệch hoặc cần apply lại.
+
+Đây là hướng gần nhất với mong muốn “kết nối là hiện overlay luôn” nhưng vẫn giữ renderer native ổn định.
+
 ## Bản sửa 2026-06-27 23:00: audio + iPhone frame overlay
 
 Bản này bổ sung 2 điểm theo feedback test thật:

@@ -593,8 +593,8 @@
         ⏹️ Dừng
       </button>
       
-      <button class="btn btn-guide" id="btnFrameOverlay">
-        📱 Mở khung iPhone overlay
+      <button class="btn btn-guide" id="btnRepositionMirror">
+        📱 Đặt lại cửa sổ mirror kiểu iPhone
       </button>
       
       <button class="btn btn-guide" id="btnGuide">
@@ -624,7 +624,7 @@
               <h3>Màn hình iPhone sẽ mở ở cửa sổ riêng</h3>
               <p>Bấm khởi động AirPlay rồi chọn “iPhone Mirror” trên iPhone. Để tránh kẹt render, màn hình iPhone sẽ mở trong cửa sổ UxPlay riêng; cửa sổ này là phần anh quay/demo.</p>
             </div>
-            <div class="embed-pill" id="embedStatus">Cửa sổ mirror riêng sẽ hiện khi iPhone kết nối...</div>
+            <div class="embed-pill" id="embedStatus">Khi iPhone kết nối, cửa sổ mirror sẽ tự thành kiểu iPhone...</div>
           </div>
         </div>
       </div>
@@ -654,7 +654,7 @@
     const btnStart = document.getElementById('btnStart');
     const btnStop = document.getElementById('btnStop');
     const btnGuide = document.getElementById('btnGuide');
-    const btnFrameOverlay = document.getElementById('btnFrameOverlay');
+    const btnRepositionMirror = document.getElementById('btnRepositionMirror');
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
     const logBox = document.getElementById('logBox');
@@ -740,13 +740,13 @@
     btnStart.addEventListener('click', async () => {
       const name = document.getElementById('serverName').value || 'iPhone Mirror';
       const noAudio = !document.getElementById('noAudio').checked;
-      const showFrameOverlay = document.getElementById('showFrameOverlay').checked;
+      const autoStyleMirror = document.getElementById('autoStyleMirror').checked;
       const fullscreen = document.getElementById('fullscreen').checked;
       
       btnStart.disabled = true;
       addLog('stdout', `Đang khởi động AirPlay server "${name}"...`);
       
-      await window.mirror.start({ name, noAudio, fullscreen, showFrameOverlay });
+      await window.mirror.start({ name, noAudio, fullscreen, autoStyleMirror, mirrorSize: 'iphone' });
       
       const ip = await window.mirror.getIP();
       ipDisplay.textContent = ip;
@@ -761,9 +761,9 @@
       infoCard.style.display = 'none';
     });
 
-    btnFrameOverlay.addEventListener('click', () => {
-      window.mirror.openFrameOverlay();
-      addLog('stdout', 'Đã mở khung iPhone overlay. Đặt cửa sổ mirror nằm dưới khung này để quay đẹp.');
+    btnRepositionMirror.addEventListener('click', () => {
+      window.mirror.repositionMirrorWindow({ mirrorSize: 'iphone' });
+      addLog('stdout', 'Đang đặt lại cửa sổ mirror thành kiểu màn hình iPhone...');
     });
 
     btnGuide.addEventListener('click', () => {
@@ -784,7 +784,7 @@
     });
 
     window.mirror.onEmbedStatus((data) => {
-      embedStatus.textContent = data.message || 'Cửa sổ mirror riêng sẽ hiện khi iPhone kết nối...';
+      embedStatus.textContent = data.message || 'Khi iPhone kết nối, cửa sổ mirror sẽ tự thành kiểu iPhone...';
       embedStatus.classList.toggle('ok', !!data.externalWindow);
       deviceScreen.classList.toggle('embedded', false);
     });
