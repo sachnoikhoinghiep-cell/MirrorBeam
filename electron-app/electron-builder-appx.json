@@ -1,0 +1,45 @@
+{
+  "appId": "com.tom.mirrorbeam",
+  "productName": "MirrorBeam",
+  "directories": {
+    "output": "dist-store"
+  },
+  "win": {
+    "target": "appx",
+    "icon": "icon.png"
+  },
+  "appx": {
+    "identityName": "REPLACE.FROM.PARTNER.CENTER",
+    "publisher": "CN=REPLACE-FROM-PARTNER-CENTER",
+    "publisherDisplayName": "REPLACE Publisher Display Name",
+    "applicationId": "MirrorBeam",
+    "displayName": "MirrorBeam",
+    "languages": ["vi-VN", "en-US"]
+  },
+  "files": [
+    "main.js",
+    "preload.js",
+    "index.html",
+    "licenses.html",
+    "icon.png",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "../uxplay-src/build/uxplay.exe",
+      "to": "uxplay.exe"
+    },
+    {
+      "from": "window-styler.ps1",
+      "to": "window-styler.ps1"
+    },
+    {
+      "from": "licenses",
+      "to": "licenses"
+    },
+    {
+      "from": "gstreamer",
+      "to": "gstreamer"
+    }
+  ]
+}

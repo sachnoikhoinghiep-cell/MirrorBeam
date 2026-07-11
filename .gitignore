@@ -22,3 +22,10 @@ uxplay-src/build/*
 *.mp4
 *.mov
 *.mkv
+
+# Bundled runtimes (regenerate: see electron-app/BUILD.md)
+electron-app/gstreamer/
+# Apple Bonjour installer (download from Apple, do not redistribute via repo)
+electron-app/redist/
+# Bug report screenshots
+loi/

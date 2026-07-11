@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Giấy phép mã nguồn mở — MirrorBeam</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f1e;
+      color: #ccc;
+      padding: 28px 32px;
+      line-height: 1.65;
+      font-size: 14px;
+    }
+    h1 { font-size: 20px; color: #fff; margin-bottom: 6px; }
+    .sub { color: #8888aa; margin-bottom: 24px; font-size: 13px; }
+    h2 { font-size: 15px; color: #a5b4fc; margin: 22px 0 6px; }
+    a { color: #818cf8; }
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .lic { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+      background: rgba(102,126,234,0.2); color: #c7d2fe; margin-left: 8px; }
+    code { background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Giấy phép mã nguồn mở</h1>
+  <p class="sub">MirrorBeam sử dụng các thành phần mã nguồn mở dưới đây. Xin cảm ơn các tác giả.</p>
+
+  <div class="card">
+    <h2 style="margin-top:0;">UxPlay <span class="lic">GPL-3.0</span></h2>
+    <p>AirPlay mirroring server — bản đi kèm đã được chỉnh sửa (thêm xoay hình trực tiếp qua stdin).
+    Mã nguồn đầy đủ của bản chỉnh sửa (kèm toàn bộ patch) được công khai tại thư mục
+    <code>uxplay-src/src</code> trong kho: <a href="https://github.com/bktimmy247/iPhone-Mirror" target="_blank">github.com/bktimmy247/iPhone-Mirror</a>.
+    Dự án gốc: <a href="https://github.com/FDH2/UxPlay" target="_blank">github.com/FDH2/UxPlay</a>.
+    Toàn văn giấy phép: <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank">GNU GPL v3</a>
+    (bản sao kèm theo tại <code>resources/licenses/UxPlay-LICENSE.txt</code>).</p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0;">GStreamer <span class="lic">LGPL-2.1</span></h2>
+    <p>Framework xử lý video/audio (các DLL trong <code>resources/gstreamer</code>, liên kết động — có thể thay thế).
+    <a href="https://gstreamer.freedesktop.org" target="_blank">gstreamer.freedesktop.org</a> —
+    <a href="https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html" target="_blank">LGPL v2.1</a></p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0;">Các thư viện khác</h2>
+    <p>
+      <strong>OpenSSL</strong> — Apache-2.0 · <a href="https://www.openssl.org" target="_blank">openssl.org</a><br>
+      <strong>libplist</strong> — LGPL-2.1 · <a href="https://libimobiledevice.org" target="_blank">libimobiledevice.org</a><br>
+      <strong>FFmpeg (gst-libav)</strong> — LGPL-2.1 · <a href="https://ffmpeg.org" target="_blank">ffmpeg.org</a><br>
+      <strong>Electron</strong> — MIT · <a href="https://www.electronjs.org" target="_blank">electronjs.org</a><br>
+      <strong>Bonjour</strong> — dịch vụ của Apple Inc., cài riêng theo điều khoản của Apple
+    </p>
+  </div>
+
+  <p class="sub" style="margin-top:20px;">AirPlay, iPhone, Bonjour là thương hiệu của Apple Inc.
+  MirrorBeam là sản phẩm độc lập, không liên kết với hay được chứng thực bởi Apple Inc.</p>
+</body>
+</html>

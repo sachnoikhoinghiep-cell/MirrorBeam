@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>iPhone Mirror</title>
+  <title>MirrorBeam</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -177,6 +177,93 @@
       color: #ccc;
     }
     
+    /* Projector panel */
+    .projector-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 20px;
+    }
+
+    .projector-card h3 {
+      font-size: 13px;
+      color: #aaaacc;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .projector-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .projector-row label {
+      font-size: 13px;
+      color: #8888aa;
+      flex-shrink: 0;
+      width: 72px;
+    }
+
+    .projector-row select {
+      flex: 1;
+      padding: 7px 8px;
+      background: rgba(15,15,30,0.9);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: #eee;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .zoom-btn {
+      width: 34px;
+      height: 30px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: #d8d8ff;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .zoom-btn:hover { background: rgba(102,126,234,0.28); }
+
+    .zoom-value {
+      min-width: 48px;
+      text-align: center;
+      font-size: 13px;
+      color: #ccc;
+    }
+
+    .proj-btn {
+      flex: 1;
+      padding: 7px 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: #d8d8ff;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .proj-btn:hover { background: rgba(102,126,234,0.28); }
+    .proj-btn.active {
+      background: rgba(102,126,234,0.35);
+      border-color: rgba(102,126,234,0.6);
+      color: #fff;
+    }
+
+    .projector-row input[type="range"] {
+      flex: 1;
+      accent-color: #667eea;
+    }
+
     /* Buttons */
     .btn {
       width: 100%;
@@ -555,7 +642,7 @@
   <div class="header">
     <div class="header-left">
       <div class="logo">📱</div>
-      <h1>iPhone Mirror <span>AirPlay Receiver</span></h1>
+      <h1>MirrorBeam <span>Chiếu màn hình iPhone lên PC</span></h1>
     </div>
     <div class="status-badge idle" id="statusBadge">
       <div class="status-dot"></div>
@@ -571,7 +658,7 @@
       
       <div class="input-group">
         <label>Tên AirPlay</label>
-        <input type="text" id="serverName" value="iPhone Mirror" placeholder="Tên hiển thị">
+        <input type="text" id="serverName" value="MirrorBeam" placeholder="Tên hiển thị">
       </div>
       
       <div class="checkbox-group">
@@ -589,6 +676,44 @@
         </label>
       </div>
       
+      <div class="projector-card">
+        <h3>🎬 Máy chiếu</h3>
+        <div class="projector-row">
+          <label>Xoay hình</label>
+          <select id="rotateSelect">
+            <option value="auto" selected>Tự động (theo iPhone)</option>
+            <option value="R">90° phải</option>
+            <option value="L">90° trái</option>
+            <option value="180">180° (lộn ngược)</option>
+          </select>
+        </div>
+        <div class="projector-row">
+          <label class="checkbox-item" style="width:auto;">
+            <input type="checkbox" id="flipH">
+            <span style="font-size:13px;">Lật gương (chiếu hắt sau)</span>
+          </label>
+        </div>
+        <div class="projector-row">
+          <label>Kích thước</label>
+          <button class="zoom-btn" id="btnZoomOut">−</button>
+          <span class="zoom-value" id="zoomValue">100%</span>
+          <button class="zoom-btn" id="btnZoomIn">+</button>
+        </div>
+        <div class="projector-row">
+          <label>Chiếu lên</label>
+          <select id="displaySelect"></select>
+        </div>
+        <div class="projector-row">
+          <button class="proj-btn" id="btnProjector">🖥️ Toàn màn hình</button>
+          <button class="proj-btn" id="btnResetFrame">📱 Về khung iPhone</button>
+        </div>
+        <div class="projector-row">
+          <label>Độ sáng</label>
+          <input type="range" id="brightnessSlider" min="20" max="130" value="100" step="5">
+          <span class="zoom-value" id="brightnessValue">100%</span>
+        </div>
+      </div>
+
       <button class="btn btn-start" id="btnStart">
         ▶️ Khởi động AirPlay
       </button>
@@ -603,6 +728,10 @@
       
       <button class="btn btn-guide" id="btnGuide">
         📖 Hướng dẫn cách AirPlay
+      </button>
+
+      <button class="btn btn-guide" id="btnLicenses">
+        📜 Giấy phép mã nguồn mở
       </button>
       
       <div class="info-card" id="infoCard" style="display:none;">
@@ -626,7 +755,7 @@
             <div class="screen-content">
               <div class="phone-icon">📱</div>
               <h3>Màn hình iPhone sẽ mở ở cửa sổ riêng</h3>
-              <p>Bấm khởi động AirPlay rồi chọn “iPhone Mirror” trên iPhone. Để tránh kẹt render, màn hình iPhone sẽ mở trong cửa sổ UxPlay riêng; cửa sổ này là phần anh quay/demo.</p>
+              <p>Bấm khởi động AirPlay rồi chọn tên server trên iPhone. Để tránh kẹt render, màn hình iPhone sẽ mở trong cửa sổ UxPlay riêng; cửa sổ này là phần anh quay/demo.</p>
             </div>
             <div class="embed-pill" id="embedStatus">Khi iPhone kết nối, cửa sổ mirror sẽ tự thành kiểu iPhone...</div>
           </div>
@@ -635,7 +764,7 @@
 
       <div class="side-stack">
         <div class="presentation-note">
-          <strong>Mẹo quay đẹp:</strong> bật AirPlay trong app, sau đó trên iPhone chọn “iPhone Mirror”. Khi iPhone kết nối, Windows sẽ mở một cửa sổ mirror riêng. Không đặt iPhone quay lại chính màn PC đang mirror để tránh vòng lặp hình gây lag/đơ.
+          <strong>Mẹo quay đẹp:</strong> bật AirPlay trong app, sau đó trên iPhone chọn “MirrorBeam”. Khi iPhone kết nối, Windows sẽ mở một cửa sổ mirror riêng. Không đặt iPhone quay lại chính màn PC đang mirror để tránh vòng lặp hình gây lag/đơ.
         </div>
         <div class="log-container">
           <h2>📋 Nhật ký</h2>
@@ -741,22 +870,149 @@
       return div.innerHTML;
     }
 
-    btnStart.addEventListener('click', async () => {
-      const name = document.getElementById('serverName').value || 'iPhone Mirror';
+    function collectOptions() {
+      const name = document.getElementById('serverName').value || 'MirrorBeam';
       const noAudio = !(document.getElementById('noAudio')?.checked ?? true);
       const autoStyleMirror = document.getElementById('autoStyleMirror')?.checked ?? true;
       const fullscreen = document.getElementById('fullscreen')?.checked ?? false;
-      
+      const rotate = document.getElementById('rotateSelect')?.value || 'auto';
+      const flipH = document.getElementById('flipH')?.checked ?? false;
+      return { name, noAudio, fullscreen, autoStyleMirror, rotate, flipH, mirrorSize: autoStyleMirror ? 'frame' : 'iphone' };
+    }
+
+    async function startServer() {
+      const options = collectOptions();
       btnStart.disabled = true;
-      addLog('stdout', `Đang khởi động AirPlay server "${name}"...`);
-      
-      await window.mirror.start({ name, noAudio, fullscreen, autoStyleMirror, mirrorSize: autoStyleMirror ? 'frame' : 'iphone' });
-      
+      addLog('stdout', `Đang khởi động AirPlay server "${options.name}"...`);
+      await window.mirror.start(options);
       const ip = await window.mirror.getIP();
       ipDisplay.textContent = ip;
       infoCard.style.display = 'block';
-      
       btnStart.disabled = false;
+    }
+
+    btnStart.addEventListener('click', startServer);
+
+    // ===== Projector controls =====
+    const rotateSelect = document.getElementById('rotateSelect');
+    const flipHChk = document.getElementById('flipH');
+    const btnZoomIn = document.getElementById('btnZoomIn');
+    const btnZoomOut = document.getElementById('btnZoomOut');
+    const zoomValue = document.getElementById('zoomValue');
+    const btnProjector = document.getElementById('btnProjector');
+    const btnResetFrame = document.getElementById('btnResetFrame');
+    const brightnessSlider = document.getElementById('brightnessSlider');
+    const brightnessValue = document.getElementById('brightnessValue');
+
+    let zoomPercent = 100;
+    let projectorOn = false;
+    const ZOOM_BASE_W = 430, ZOOM_BASE_H = 860;
+
+    async function applyRotation() {
+      if (!isRunning) return; // chưa chạy thì giá trị sẽ áp dụng khi khởi động
+      const res = await window.mirror.setRotation({ rotate: rotateSelect.value, flipH: flipHChk.checked });
+      addLog('stdout', res && res.ok
+        ? 'Đã xoay/lật hình trực tiếp — AirPlay không bị ngắt.'
+        : 'Không gửi được lệnh xoay (server chưa sẵn sàng).');
+    }
+
+    rotateSelect.addEventListener('change', applyRotation);
+    flipHChk.addEventListener('change', applyRotation);
+
+    function applyZoom() {
+      zoomValue.textContent = zoomPercent + '%';
+      projectorOn = false;
+      btnProjector.classList.remove('active');
+      if (!isRunning) return;
+      window.mirror.repositionMirrorWindow({
+        mirrorSize: 'custom',
+        width: Math.round(ZOOM_BASE_W * zoomPercent / 100),
+        height: Math.round(ZOOM_BASE_H * zoomPercent / 100)
+      });
+    }
+
+    btnZoomIn.addEventListener('click', () => {
+      zoomPercent = Math.min(200, zoomPercent + 10);
+      applyZoom();
+    });
+
+    btnZoomOut.addEventListener('click', () => {
+      zoomPercent = Math.max(40, zoomPercent - 10);
+      applyZoom();
+    });
+
+    const displaySelect = document.getElementById('displaySelect');
+
+    async function refreshDisplays() {
+      try {
+        const list = await window.mirror.getDisplays();
+        const current = displaySelect.value;
+        displaySelect.innerHTML = '';
+        list.forEach((d) => {
+          const o = document.createElement('option');
+          o.value = d.id;
+          o.textContent = d.label;
+          if (d.primary) o.dataset.primary = '1';
+          displaySelect.appendChild(o);
+        });
+        if (current && list.some(d => String(d.id) === current)) {
+          displaySelect.value = current;
+        } else {
+          const primary = list.find(d => d.primary);
+          if (primary) displaySelect.value = primary.id;
+        }
+      } catch (_) {}
+    }
+    refreshDisplays();
+    window.mirror.onDisplaysChanged(() => {
+      refreshDisplays();
+      addLog('stdout', 'Danh sách màn hình thay đổi (cắm/rút HDMI hoặc kết nối không dây).');
+    });
+
+    displaySelect.addEventListener('change', () => {
+      if (projectorOn) {
+        window.mirror.repositionMirrorWindow({ mirrorSize: 'projector', displayId: Number(displaySelect.value) });
+        addLog('stdout', 'Đã chuyển video sang màn hình: ' + displaySelect.selectedOptions[0].textContent);
+      }
+    });
+
+    btnProjector.addEventListener('click', () => {
+      if (!isRunning) { addLog('stdout', 'Khởi động AirPlay trước rồi mới bật chế độ máy chiếu.'); return; }
+      projectorOn = !projectorOn;
+      btnProjector.classList.toggle('active', projectorOn);
+      window.mirror.repositionMirrorWindow(projectorOn
+        ? { mirrorSize: 'projector', displayId: Number(displaySelect.value) }
+        : { mirrorSize: 'frame' });
+      addLog('stdout', projectorOn
+        ? 'Chế độ máy chiếu: video phủ kín "' + displaySelect.selectedOptions[0].textContent + '".'
+        : 'Đã thoát chế độ máy chiếu.');
+    });
+
+    btnResetFrame.addEventListener('click', () => {
+      projectorOn = false;
+      zoomPercent = 100;
+      zoomValue.textContent = '100%';
+      btnProjector.classList.remove('active');
+      if (!isRunning) return;
+      window.mirror.openMirrorFrame();
+      window.mirror.repositionMirrorWindow({ mirrorSize: 'frame' });
+    });
+
+    brightnessSlider.addEventListener('input', () => {
+      const v = Number(brightnessSlider.value);
+      brightnessValue.textContent = v + '%';
+      window.mirror.setBrightness(v);
+    });
+
+    window.mirror.onProjectorExited(() => {
+      projectorOn = false;
+      btnProjector.classList.remove('active');
+    });
+
+    brightnessSlider.addEventListener('dblclick', () => {
+      brightnessSlider.value = 100;
+      brightnessValue.textContent = '100%';
+      window.mirror.setBrightness(100);
     });
 
     btnStop.addEventListener('click', async () => {
@@ -773,6 +1029,10 @@
 
     btnGuide.addEventListener('click', () => {
       window.mirror.openGuide();
+    });
+
+    document.getElementById('btnLicenses').addEventListener('click', () => {
+      window.mirror.openLicenses();
     });
 
     // Status updates from main process

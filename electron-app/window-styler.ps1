@@ -61,7 +61,7 @@ function Score-Window($w) {
   if ($w.Title -match 'Direct3D11 renderer') { $score += 1000 }
   if ($w.Title -match 'GStreamer|renderer|AirPlay|iPhone|Mirror|UxPlay') { $score += 300 }
   if ($w.Class -match 'Direct3D|GStreamer|SDL|Qt|GLib|gdk|gtk|WindowsForms') { $score += 200 }
-  if ($w.Title -match 'iPhone Mirror - AirPlay Receiver|iPhone Mirror$') { $score -= 700 }
+  if ($w.Title -match 'iPhone Mirror - AirPlay Receiver|iPhone Mirror$|MirrorBeam') { $score -= 700 }
   if ($w.Class -match 'Chrome_WidgetWin|CabinetWClass|Progman|Shell_TrayWnd') { $score -= 500 }
   return $score
 }

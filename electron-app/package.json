@@ -1,32 +1,50 @@
 {
-  "name": "iphone-mirror",
+  "name": "mirrorbeam",
   "version": "1.0.0",
-  "description": "iPhone Screen Mirror for PC - AirPlay Receiver",
+  "description": "MirrorBeam - Screen Mirroring for iPhone (AirPlay Receiver for PC)",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win portable",
+    "build": "electron-builder --win nsis",
+    "build:portable": "electron-builder --win portable",
+    "build:store": "electron-builder --win appx --config electron-builder-appx.json",
     "dev": "electron . --dev"
   },
   "author": "Tôm AI",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^33.0.0",
+    "electron": "^42.5.0",
     "electron-builder": "^25.0.0"
   },
   "build": {
-    "appId": "com.tom.iphone-mirror",
-    "productName": "iPhone Mirror",
+    "appId": "com.tom.mirrorbeam",
+    "productName": "MirrorBeam",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "bktimmy247",
+        "repo": "iPhone-Mirror"
+      }
+    ],
     "win": {
-      "target": "portable",
+      "target": "nsis",
       "icon": "icon.png"
     },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "MirrorBeam-Setup-${version}.exe"
+    },
     "files": [
-      "**/*",
-      "!uxplay-src/**",
-      "!dist*/**",
-      "!*.log",
-      "!*.7z"
+      "main.js",
+      "preload.js",
+      "index.html",
+      "licenses.html",
+      "icon.png",
+      "package.json"
     ],
     "extraResources": [
       {
@@ -36,10 +54,22 @@
       {
         "from": "window-styler.ps1",
         "to": "window-styler.ps1"
+      },
+      {
+        "from": "licenses",
+        "to": "licenses"
+      },
+      {
+        "from": "gstreamer",
+        "to": "gstreamer"
+      },
+      {
+        "from": "redist",
+        "to": "redist"
       }
-    ],
-    "portable": {
-      "artifactName": "iPhoneMirror.exe"
-    }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }
