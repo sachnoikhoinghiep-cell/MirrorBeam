@@ -22,8 +22,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "bktimmy247",
-        "repo": "iPhone-Mirror"
+        "owner": "sachnoikhoinghiep-cell",
+        "repo": "MirrorBeam"
       }
     ],
     "win": {
