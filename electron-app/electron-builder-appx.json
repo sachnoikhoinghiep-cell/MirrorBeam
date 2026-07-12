@@ -9,9 +9,9 @@
     "icon": "icon.png"
   },
   "appx": {
-    "identityName": "REPLACE.FROM.PARTNER.CENTER",
-    "publisher": "CN=REPLACE-FROM-PARTNER-CENTER",
-    "publisherDisplayName": "REPLACE Publisher Display Name",
+    "identityName": "TomAI.MirrorBeam",
+    "publisher": "CN=431D41F0-2AFB-438F-AABB-C5BB925847C9",
+    "publisherDisplayName": "Tom AI",
     "applicationId": "MirrorBeam",
     "displayName": "MirrorBeam",
     "languages": ["vi-VN", "en-US"]
